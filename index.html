@@ -1,31 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stylish Career Recommender</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <div class="overlay"></div>
+
+  <div id="logoutContainer">
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+  </div>
+
   <div class="container">
     <h1>AI Career Recommender</h1>
-    <p>Select your interests:</p>
-    <div class="interests">
-      <button class="interest-btn" data-value="math">Math</button>
-      <button class="interest-btn" data-value="coding">Coding</button>
-      <button class="interest-btn" data-value="design">Design</button>
-      <button class="interest-btn" data-value="writing">Writing</button>
-      <button class="interest-btn" data-value="business">Business</button>
-      <button class="interest-btn" data-value="ai">AI / ML</button>
-      <button class="interest-btn" data-value="finance">Finance</button>
-      <button class="interest-btn" data-value="health">Health / Medicine</button>
-      <button class="interest-btn" data-value="law">Law</button>
-      <button class="interest-btn" data-value="arts">Arts</button>
+    <p>Tell us about your hobbies, favorite subjects, or passions:</p>
+
+    <div class="input-group">
+      <textarea id="interestInput"
+        placeholder="e.g. I love solving math puzzles, playing video games, and drawing anime characters..."
+        rows="4"></textarea>
+      <p id="wordCount" style="font-size: 0.8rem; color: #eee; margin-top: 5px;">0 / 15 words</p>
     </div>
-    <button id="recommendBtn">Get Career Recommendation</button>
+    <button id="recommendBtn">Get AI Recommendation</button>
+
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <p>Analyzing with AI...</p>
+    </div>
+
     <h2 id="result"></h2>
+
+    <!-- Roadmap Configuration Section (Hidden initially or shown after result) -->
+    <div id="roadmapSection" class="hidden"
+      style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+      <h3>🚀 Career Roadmap Generator</h3>
+      <p>Want a plan? Tell us where you are now:</p>
+
+      <div class="form-group" style="text-align: left; max-width: 400px; margin: 0 auto;">
+        <label for="currentPosition">Current Status (e.g., High School Student, Layout Artist)</label>
+        <input type="text" id="currentPosition" placeholder="e.g. 10th Grade Student"
+          style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: none;">
+
+        <label for="targetCareer">Goal Career (Select from AI results)</label>
+        <select id="targetCareer"
+          style="width: 100%; padding: 10px; border-radius: 8px; border: none; background: white; color: #333;">
+          <option value="" disabled selected>-- Wait for AI Results --</option>
+        </select>
+      </div>
+
+      <button id="roadmapBtn" class="interest-btn" style="background: #2575fc; margin-top: 15px;">Generate
+        Roadmap</button>
+
+      <div id="roadmapLoading" class="hidden">
+        <div class="spinner"></div>
+        <p>Planning your journey...</p>
+      </div>
+
+      <div id="roadmapResult"></div>
+    </div>
   </div>
+
+  <!-- Firebase Scripts (Compatibility Version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <!-- Marked library for markdown parsing (Gemini returns markdown) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- App Scripts -->
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
   <script src="script.js"></script>
 </body>
+
 </html>
