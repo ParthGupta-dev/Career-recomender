@@ -35,52 +35,63 @@ recommendBtn.addEventListener('click', async () => {
         return;
     }
 
-    // Check if API key is set
-    if (CONFIG.geminiApiKey === "YOUR_GEMINI_API_KEY") {
-        resultHeader.innerHTML = "Error: API Key missing. Please update <code>config.js</code>.";
-        return;
-    }
-
     // Show Loading
     loadingDiv.classList.remove('hidden');
     resultHeader.innerText = "";
     recommendBtn.disabled = true;
 
+    // Hide cards and share buttons initially
+    document.getElementById('careerCardsContainer').classList.add('hidden');
+    document.getElementById('shareButtons').classList.add('hidden');
+
     try {
         const responseText = await callGemini(interests);
 
-        // Convert Markdown to HTML using 'marked' library
-        resultHeader.innerHTML = marked.parse(responseText);
+        // Parse JSON response
+        let careerData;
+        try {
+            // Extract JSON from markdown code blocks if present
+            let jsonText = responseText;
+            if (responseText.includes('```json')) {
+                jsonText = responseText.split('```json')[1].split('```')[0].trim();
+            } else if (responseText.includes('```')) {
+                jsonText = responseText.split('```')[1].split('```')[0].trim();
+            }
 
-        // EXTRACTION LOGIC: Finds text inside bold **Title** inside the table
-        // Matches "**Software Engineer**"
-        const careerMatches = responseText.match(/\*\*(.*?)\*\*/g);
+            careerData = JSON.parse(jsonText);
+        } catch (parseError) {
+            console.error("JSON Parse Error:", parseError);
+            console.log("Raw Response:", responseText);
+            throw new Error("Failed to parse AI response. Please try again.");
+        }
 
+        // Store career data globally for sharing
+        window.currentCareers = careerData.careers;
+        window.currentInterests = interests;
+
+        // Render career cards
+        renderCareerCards(careerData.careers);
+
+        // Show success message
+        resultHeader.innerHTML = "✨ <strong>Your Personalized Career Recommendations:</strong>";
+
+        // Populate dropdown for roadmap
         const targetSelect = document.getElementById('targetCareer');
         targetSelect.innerHTML = '<option value="" disabled selected>-- Select a Career --</option>';
 
-        if (careerMatches) {
-            // Filter out the header if it happens to be bolded (though prompt says Career Path is col header)
-            const uniqueCareers = [...new Set(careerMatches)]; // Remove duplicates
+        careerData.careers.forEach(career => {
+            const option = document.createElement('option');
+            option.value = career.name;
+            option.innerText = career.name;
+            targetSelect.appendChild(option);
+        });
 
-            uniqueCareers.forEach(career => {
-                // Remove asterisks
-                let cleanCareer = career.replace(/\*\*/g, '');
-                // Ignore if it looks like a header (e.g. contains "Career Path")
-                if (cleanCareer.toLowerCase().includes('career path')) return;
-
-                const option = document.createElement('option');
-                option.value = cleanCareer;
-                option.innerText = cleanCareer;
-                targetSelect.appendChild(option);
-            });
-        } else {
-            // Fallback if AI formatting changes
-            targetSelect.innerHTML += '<option value="Custom">Type it manually above</option>';
-        }
-
-        // Show the Roadmap Section now that we have a result
+        // Show the Roadmap Section
         document.getElementById('roadmapSection').classList.remove('hidden');
+
+        // Show share buttons
+        document.getElementById('shareButtons').classList.remove('hidden');
+
     } catch (error) {
         console.error("Full Error Object:", error);
         resultHeader.innerHTML = `<span style="color: red; font-size: 1rem;">Error: ${error.message}</span><br><small style="color: #ccc;">Check console (F12) for details.</small>`;
@@ -91,37 +102,254 @@ recommendBtn.addEventListener('click', async () => {
 });
 
 async function callGemini(interests) {
-    const prompt = `I am a student interested in: ${interests}. 
-    Suggest 3 specific career paths for me. 
-    Format the output as a simple Markdown Table with two columns: "Career Path" and "Why it fits".
-    Do not add Numbering.
-    Make sure the Career Path is Bolded (e.g., **Software Engineer**).`;
-
-    // Use 'gemini-flash-latest' which is often the most compatible free-tier model
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${CONFIG.geminiApiKey}`;
-
-    const response = await fetch(url, {
+    // Call our serverless function instead of Gemini directly
+    // This keeps the API key secure on the server
+    const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            contents: [{
-                parts: [{
-                    text: prompt
-                }]
-            }]
-        })
+        body: JSON.stringify({ interests })
     });
 
     if (!response.ok) {
         const errorData = await response.json();
-        console.error("Gemini API Error details:", errorData);
-        throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
+        throw new Error(errorData.error || 'Failed to get AI response');
     }
 
     const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
+    return data.response;
+}
+
+// Helper function to get icon for career
+function getCareerIcon(careerName) {
+    const name = careerName.toLowerCase();
+
+    if (name.includes('software') || name.includes('developer') || name.includes('programmer')) {
+        return 'fa-code';
+    } else if (name.includes('data') || name.includes('analyst')) {
+        return 'fa-chart-line';
+    } else if (name.includes('design') || name.includes('ui') || name.includes('ux')) {
+        return 'fa-palette';
+    } else if (name.includes('doctor') || name.includes('medical') || name.includes('health')) {
+        return 'fa-user-md';
+    } else if (name.includes('teacher') || name.includes('education')) {
+        return 'fa-chalkboard-teacher';
+    } else if (name.includes('business') || name.includes('manager')) {
+        return 'fa-briefcase';
+    } else if (name.includes('engineer')) {
+        return 'fa-cogs';
+    } else if (name.includes('artist') || name.includes('creative')) {
+        return 'fa-paint-brush';
+    } else if (name.includes('writer') || name.includes('content')) {
+        return 'fa-pen-fancy';
+    } else if (name.includes('market')) {
+        return 'fa-bullhorn';
+    } else if (name.includes('finance') || name.includes('account')) {
+        return 'fa-dollar-sign';
+    } else {
+        return 'fa-star'; // Default icon
+    }
+}
+
+// Helper function to get trend emoji and class
+function getTrendBadge(trend) {
+    const trendLower = trend.toLowerCase();
+
+    if (trendLower.includes('hot')) {
+        return { emoji: '🔥', text: 'Hot Career', class: 'demand-high' };
+    } else if (trendLower.includes('growing')) {
+        return { emoji: '📈', text: 'Growing', class: 'demand-medium' };
+    } else if (trendLower.includes('stable')) {
+        return { emoji: '💼', text: 'Stable', class: 'demand-medium' };
+    } else {
+        return { emoji: '📉', text: 'Declining', class: 'demand-low' };
+    }
+}
+
+// Render career cards
+function renderCareerCards(careers) {
+    const container = document.getElementById('careerCardsContainer');
+    container.innerHTML = ''; // Clear existing content
+
+    careers.forEach(career => {
+        const card = document.createElement('div');
+        card.className = 'career-card';
+
+        const icon = getCareerIcon(career.name);
+        const trendBadge = getTrendBadge(career.trend);
+
+        // Determine demand badge class
+        let demandClass = 'demand-medium';
+        if (career.demand.toLowerCase() === 'high') {
+            demandClass = 'demand-high';
+        } else if (career.demand.toLowerCase() === 'low') {
+            demandClass = 'demand-low';
+        }
+
+        card.innerHTML = `
+            <div class="career-card-icon">
+                <i class="fas ${icon}"></i>
+            </div>
+            <div class="career-card-title">${career.name}</div>
+            <div class="career-card-description">${career.description}</div>
+            <div class="career-card-market">
+                <div style="margin-bottom: 10px;">
+                    <span class="market-badge ${trendBadge.class}">${trendBadge.emoji} ${trendBadge.text}</span>
+                    <span class="market-badge ${demandClass}">Demand: ${career.demand}</span>
+                </div>
+                <div class="market-insights">💡 ${career.insights}</div>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+
+    // Show the container
+    container.classList.remove('hidden');
+}
+
+// Share to Twitter
+function shareToTwitter() {
+    if (!window.currentCareers) return;
+
+    const careersText = window.currentCareers.map(c => c.name).join(', ');
+    const text = `I just discovered my ideal career paths: ${careersText}! 🚀 Check out this AI Career Recommender!`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+}
+
+// Share to LinkedIn
+function shareToLinkedIn() {
+    if (!window.currentCareers) return;
+
+    const careersText = window.currentCareers.map(c => c.name).join(', ');
+    const text = `Excited to explore career opportunities in: ${careersText}! AI-powered career guidance is amazing! 💼`;
+    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}&summary=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+}
+
+// Share to WhatsApp
+function shareToWhatsApp() {
+    if (!window.currentCareers) return;
+
+    const careersText = window.currentCareers.map((c, i) => `${i + 1}. ${c.name} - ${c.description}`).join('\n');
+    const text = `🎯 My AI Career Recommendations:\n\n${careersText}\n\nDiscover yours too!`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+}
+
+// Copy to Clipboard
+function copyToClipboard() {
+    if (!window.currentCareers) return;
+
+    const careersText = window.currentCareers.map((c, i) =>
+        `${i + 1}. ${c.name}\n   - ${c.description}\n   - Market Demand: ${c.demand}\n   - Trend: ${c.trend}\n   - Insight: ${c.insights}`
+    ).join('\n\n');
+
+    const text = `My AI Career Recommendations:\n\nInterests: ${window.currentInterests}\n\n${careersText}`;
+
+    navigator.clipboard.writeText(text).then(() => {
+        // Show confirmation
+        const btn = event.target.closest('.share-btn');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        btn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy to clipboard');
+        console.error('Copy error:', err);
+    });
+}
+
+// Generate PDF
+function generatePDF() {
+    if (!window.currentCareers) return;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(20);
+    doc.setTextColor(255, 127, 80);
+    doc.text('AI Career Recommendations', 20, 20);
+
+    // Interests
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Your Interests:', 20, 35);
+    doc.setFontSize(10);
+    doc.text(window.currentInterests, 20, 42, { maxWidth: 170 });
+
+    let yPosition = 55;
+
+    // Careers
+    window.currentCareers.forEach((career, index) => {
+        // Check if we need a new page
+        if (yPosition > 250) {
+            doc.addPage();
+            yPosition = 20;
+        }
+
+        // Career number and name
+        doc.setFontSize(14);
+        doc.setTextColor(255, 127, 80);
+        doc.text(`${index + 1}. ${career.name}`, 20, yPosition);
+        yPosition += 8;
+
+        // Description
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Why it fits:', 25, yPosition);
+        yPosition += 5;
+        doc.text(career.description, 25, yPosition, { maxWidth: 165 });
+        yPosition += 10;
+
+        // Market data
+        doc.text(`Market Demand: ${career.demand} | Trend: ${career.trend}`, 25, yPosition);
+        yPosition += 5;
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Insight: ${career.insights}`, 25, yPosition, { maxWidth: 165 });
+        yPosition += 12;
+
+        // Reset color
+        doc.setTextColor(0, 0, 0);
+    });
+
+    // Add roadmap if available
+    const roadmapResult = document.getElementById('roadmapResult');
+    if (roadmapResult && roadmapResult.innerText.trim()) {
+        if (yPosition > 200) {
+            doc.addPage();
+            yPosition = 20;
+        }
+
+        doc.setFontSize(16);
+        doc.setTextColor(255, 127, 80);
+        doc.text('Your Career Roadmap', 20, yPosition);
+        yPosition += 10;
+
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        const roadmapText = roadmapResult.innerText.substring(0, 1000); // Limit length
+        doc.text(roadmapText, 20, yPosition, { maxWidth: 170 });
+    }
+
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Generated by AI Career Recommender - Page ${i} of ${pageCount}`, 20, 285);
+    }
+
+    // Download
+    doc.save('My-Career-Recommendations.pdf');
 }
 
 // ROADMAP LOGIC
@@ -150,15 +378,23 @@ roadmapBtn.addEventListener('click', async () => {
     Format as a Markdown list.`;
 
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${CONFIG.geminiApiKey}`;
-        const response = await fetch(url, {
+        // Call our serverless function instead of Gemini directly
+        const response = await fetch('/api/roadmap', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({
+                currentPosition: current,
+                targetCareer: target
+            })
         });
 
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to generate roadmap');
+        }
+
         const data = await response.json();
-        const text = data.candidates[0].content.parts[0].text;
+        const text = data.response;
 
         roadmapResult.innerHTML = marked.parse(text);
 

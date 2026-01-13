@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stylish Career Recommender</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 
 <body>
@@ -33,6 +35,31 @@
     </div>
 
     <h2 id="result"></h2>
+
+    <!-- Career Cards Container -->
+    <div id="careerCardsContainer" class="career-cards-container hidden"></div>
+
+    <!-- Share Buttons -->
+    <div id="shareButtons" class="share-buttons hidden">
+      <h3>📤 Share Your Results</h3>
+      <div class="share-btn-group">
+        <button class="share-btn twitter" onclick="shareToTwitter()">
+          <i class="fab fa-twitter"></i> Twitter
+        </button>
+        <button class="share-btn linkedin" onclick="shareToLinkedIn()">
+          <i class="fab fa-linkedin"></i> LinkedIn
+        </button>
+        <button class="share-btn whatsapp" onclick="shareToWhatsApp()">
+          <i class="fab fa-whatsapp"></i> WhatsApp
+        </button>
+        <button class="share-btn copy" onclick="copyToClipboard()">
+          <i class="fas fa-copy"></i> Copy
+        </button>
+        <button class="share-btn pdf" onclick="generatePDF()">
+          <i class="fas fa-file-pdf"></i> Download PDF
+        </button>
+      </div>
+    </div>
 
     <!-- Roadmap Configuration Section (Hidden initially or shown after result) -->
     <div id="roadmapSection" class="hidden"
@@ -70,6 +97,9 @@
 
   <!-- Marked library for markdown parsing (Gemini returns markdown) -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- jsPDF for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <!-- App Scripts -->
   <script src="config.js"></script>

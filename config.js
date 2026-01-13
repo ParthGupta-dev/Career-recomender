@@ -13,8 +13,9 @@ const CONFIG = {
         appId: "1:704278576754:web:76f7ec90f621084cc04ceb"
     },
 
-    // 1. Go to aistudio.google.com -> Get API Key
-    geminiApiKey: "AIzaSyDIuD8SPOGUbnQV01k6kGb9Ec0s27QDhD8"
+    // Gemini API Key is now securely stored on the server
+    // The API calls are made through Vercel serverless functions at /api/gemini and /api/roadmap
+    // This prevents the API key from being exposed in the browser
 };
 
 // Export for use in other files if using modules, but for vanilla JS script tags,

@@ -226,3 +226,179 @@ h1 {
     transform: rotate(360deg);
   }
 }
+
+/* Career Cards Styles */
+.career-cards-container {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.career-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 20px;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.career-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 10px 30px rgba(255, 127, 80, 0.3);
+  border-color: rgba(255, 127, 80, 0.5);
+}
+
+.career-card-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  background: linear-gradient(135deg, #ff7f50, #ff4500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.career-card-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #ff7f50;
+  margin-bottom: 10px;
+}
+
+.career-card-description {
+  font-size: 0.95rem;
+  color: #eee;
+  line-height: 1.5;
+  margin-bottom: 15px;
+}
+
+.career-card-market {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.market-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+.demand-high {
+  background: linear-gradient(135deg, #ff4d4d, #ff0000);
+  color: white;
+}
+
+.demand-medium {
+  background: linear-gradient(135deg, #ffa500, #ff8c00);
+  color: white;
+}
+
+.demand-low {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+}
+
+.trend-indicator {
+  font-size: 0.9rem;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.market-insights {
+  font-size: 0.85rem;
+  color: #ddd;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Share Buttons Styles */
+.share-buttons {
+  margin-top: 30px;
+  padding: 25px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.share-buttons h3 {
+  color: #ff7f50;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.share-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.share-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-btn i {
+  font-size: 1.1rem;
+}
+
+.share-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.share-btn.twitter {
+  background: linear-gradient(135deg, #1DA1F2, #0c85d0);
+}
+
+.share-btn.linkedin {
+  background: linear-gradient(135deg, #0077B5, #005885);
+}
+
+.share-btn.whatsapp {
+  background: linear-gradient(135deg, #25D366, #1ebe57);
+}
+
+.share-btn.copy {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.share-btn.pdf {
+  background: linear-gradient(135deg, #ff4d4d, #c62828);
+}
+
+/* Responsive Design for Cards */
+@media (max-width: 768px) {
+  .career-cards-container {
+    grid-template-columns: 1fr;
+  }
+
+  .share-btn-group {
+    flex-direction: column;
+  }
+
+  .share-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
