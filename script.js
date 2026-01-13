@@ -94,7 +94,19 @@ recommendBtn.addEventListener('click', async () => {
 
     } catch (error) {
         console.error("Full Error Object:", error);
-        resultHeader.innerHTML = `<span style="color: red; font-size: 1rem;">Error: ${error.message}</span><br><small style="color: #ccc;">Check console (F12) for details.</small>`;
+
+        // Handle Rate Limit / Quota Errors
+        if (error.message.includes('Quota exceeded') || error.message.includes('429')) {
+            resultHeader.innerHTML = `
+                <div style="padding: 20px; background: rgba(255, 165, 0, 0.1); border: 1px solid #FFA500; border-radius: 10px; color: #FFA500;">
+                    <i class="fas fa-hourglass-half" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
+                    <strong>AI is busy!</strong><br>
+                    We hit the free usage limit. Please wait about <strong>60 seconds</strong> before trying again.
+                </div>
+            `;
+        } else {
+            resultHeader.innerHTML = `<span style="color: red; font-size: 1rem;">Error: ${error.message}</span><br><small style="color: #ccc;">Check console (F12) for details.</small>`;
+        }
     } finally {
         loadingDiv.classList.add('hidden');
         recommendBtn.disabled = false;
@@ -410,7 +422,16 @@ roadmapBtn.addEventListener('click', async () => {
         `;
     } catch (e) {
         console.error(e);
-        roadmapResult.innerHTML = "Error generating roadmap. Try again.";
+
+        if (e.message.includes('Quota exceeded') || e.message.includes('429')) {
+            roadmapResult.innerHTML = `
+                <div style="padding: 15px; color: #FFA500; text-align: center;">
+                    ⚠️ Quota limit reached. Please wait 1 minute and try again.
+                </div>
+            `;
+        } else {
+            roadmapResult.innerHTML = "Error generating roadmap. Try again.";
+        }
     } finally {
         roadmapLoading.classList.add('hidden');
         roadmapBtn.disabled = false;
