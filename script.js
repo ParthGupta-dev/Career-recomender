@@ -125,8 +125,24 @@ async function callGemini(interests) {
     });
 
     if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get AI response');
+        // Handle 404 (Serverless function not found - likely local testing without Vercel)
+        if (response.status === 404) {
+            throw new Error("Local testing? You must use 'vercel dev' to run serverless functions. Or deploy to Vercel.");
+        }
+
+        let errorMessage = 'Failed to get AI response';
+        try {
+            const errorData = await response.json();
+            // Try to extract message from various common error formats
+            errorMessage = errorData.error?.message || errorData.error || errorMessage;
+            if (typeof errorMessage === 'object') {
+                errorMessage = JSON.stringify(errorMessage);
+            }
+        } catch (e) {
+            // response was not JSON
+            errorMessage = `API Error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
     }
 
     const data = await response.json();
