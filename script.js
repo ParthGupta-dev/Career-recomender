@@ -29,28 +29,50 @@ function navigateTo(viewId) {
 }
 
 // --- AI Helper ---
+// --- AI Helper ---
 async function callGemini(prompt) {
-    // API key is hardcoded in state
     if (!state.apiKey) return "Error: No API Key Configured";
 
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${state.apiKey}`;
+    // List of models to try in order of preference
+    const models = [
+        'gemini-1.5-flash',
+        'gemini-pro',
+        'gemini-1.5-pro'
+    ];
 
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
-        });
+    let lastError = null;
 
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-        return data.candidates[0].content.parts[0].text;
-    } catch (error) {
-        console.error('AI Error:', error);
-        return `Error calling AI: ${error.message}`;
+    for (const model of models) {
+        // Try v1beta as it often has the newest models, can fallback to v1 if needed but keeping it simple for now
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`;
+
+        try {
+            console.log(`Attempting to call model: ${model}`);
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                console.warn(`Model ${model} failed:`, data.error.message);
+                lastError = data.error.message;
+                continue; // Try next model
+            }
+
+            return data.candidates[0].content.parts[0].text;
+
+        } catch (error) {
+            console.error(`Network error with ${model}:`, error);
+            lastError = error.message;
+        }
     }
+
+    return `AI Error: Could not connect to any available models. Last error: ${lastError}`;
 }
 
 // --- Feature 1: Roadmap Generator ---
