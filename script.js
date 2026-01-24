@@ -10,12 +10,9 @@ let state = {
 };
 
 // --- DOM Elements ---
+// --- DOM Elements ---
 const views = document.querySelectorAll('.view');
-const apiKeyBtn = document.getElementById('apiKeyBtn');
-const apiModal = document.getElementById('api-modal');
-const apiKeyInput = document.getElementById('api-key-input');
-const saveApiKeyBtn = document.getElementById('save-api-key');
-const closeModalBtn = document.getElementById('close-modal');
+// API Key elements removed
 
 // --- Navigation ---
 function navigateTo(viewId) {
@@ -31,36 +28,10 @@ function navigateTo(viewId) {
     }
 }
 
-// --- API Key Management ---
-apiKeyBtn.addEventListener('click', () => {
-    apiModal.classList.remove('hidden');
-    apiKeyInput.value = state.apiKey;
-});
-
-closeModalBtn.addEventListener('click', () => apiModal.classList.add('hidden'));
-
-saveApiKeyBtn.addEventListener('click', () => {
-    const key = apiKeyInput.value.trim();
-    if (key) {
-        state.apiKey = key;
-        localStorage.setItem('gemini_api_key', key);
-        apiModal.classList.add('hidden');
-        alert('API Key Saved!');
-    }
-});
-
-function checkApiKey() {
-    if (!state.apiKey) {
-        alert('Please set your Gemini API Key using the key icon in the top right to use AI features.');
-        apiModal.classList.remove('hidden');
-        return false;
-    }
-    return true;
-}
-
 // --- AI Helper ---
 async function callGemini(prompt) {
-    if (!checkApiKey()) return "Error: No API Key";
+    // API key is hardcoded in state
+    if (!state.apiKey) return "Error: No API Key Configured";
 
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`;
 

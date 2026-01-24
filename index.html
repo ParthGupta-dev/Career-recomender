@@ -31,7 +31,6 @@
     <header>
       <div class="logo">NextGen<span class="highlight">Career</span></div>
       <div class="header-actions">
-        <button id="apiKeyBtn" class="api-btn" title="Set Gemini API Key"><i class="fas fa-key"></i></button>
         <button id="logoutBtn" class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
       </div>
     </header>
@@ -175,18 +174,7 @@
     </main>
   </div>
 
-  <!-- API Key Modal -->
-  <div id="api-modal" class="modal hidden">
-    <div class="modal-content">
-      <h3>Enter Gemini API Key</h3>
-      <p>To use AI features, please provide your API key. It is stored locally in your browser.</p>
-      <input type="password" id="api-key-input" placeholder="Paste API Key here">
-      <div class="modal-actions">
-        <button id="save-api-key">Save</button>
-        <button id="close-modal" class="secondary">Cancel</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Existing Auth Scripts -->
   <script src="config.js"></script>
