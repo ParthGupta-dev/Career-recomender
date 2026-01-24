@@ -33,7 +33,7 @@ async function callGemini(prompt) {
     // API key is hardcoded in state
     if (!state.apiKey) return "Error: No API Key Configured";
 
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${state.apiKey}`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${state.apiKey}`;
 
     try {
         const response = await fetch(API_URL, {
