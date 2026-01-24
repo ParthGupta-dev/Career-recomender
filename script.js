@@ -30,43 +30,22 @@ function navigateTo(viewId) {
 
 // --- AI Helper ---
 // --- AI Helper ---
-// Helper to inspect available models
-async function checkAvailableModels() {
-    if (!state.apiKey) return;
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models?key=${state.apiKey}`;
-    try {
-        const response = await fetch(API_URL);
-        const data = await response.json();
-        console.log("AVAILABLE MODELS:", data);
-        alert("Check the browser console (F12) for the list of available models.");
-        return data;
-    } catch (e) {
-        console.error("Error listing models:", e);
-        alert("Error listing models: " + e.message);
-    }
-}
-// Expose for manual debugging
-window.checkAvailableModels = checkAvailableModels;
-
 async function callGemini(prompt) {
-    // ... existing code ...
     if (!state.apiKey) return "Error: No API Key Configured";
 
-    // List of models to try in order of preference
+    // Valid models from user's list
     const models = [
-        'gemini-1.5-flash',
-        'gemini-pro',
-        'gemini-1.5-pro'
+        'gemini-2.0-flash',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash-lite'
     ];
 
     let lastError = null;
 
     for (const model of models) {
-        // Try v1beta as it often has the newest models, can fallback to v1 if needed but keeping it simple for now
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`;
 
         try {
-            console.log(`Attempting to call model: ${model}`);
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -91,7 +70,7 @@ async function callGemini(prompt) {
         }
     }
 
-    return `AI Error: Could not connect to any available models. Last error: ${lastError}`;
+    return `AI Error: Could not connect to models. Last error: ${lastError}`;
 }
 
 // --- Feature 1: Roadmap Generator ---
