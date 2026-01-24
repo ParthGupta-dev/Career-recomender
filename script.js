@@ -30,7 +30,26 @@ function navigateTo(viewId) {
 
 // --- AI Helper ---
 // --- AI Helper ---
+// Helper to inspect available models
+async function checkAvailableModels() {
+    if (!state.apiKey) return;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models?key=${state.apiKey}`;
+    try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        console.log("AVAILABLE MODELS:", data);
+        alert("Check the browser console (F12) for the list of available models.");
+        return data;
+    } catch (e) {
+        console.error("Error listing models:", e);
+        alert("Error listing models: " + e.message);
+    }
+}
+// Expose for manual debugging
+window.checkAvailableModels = checkAvailableModels;
+
 async function callGemini(prompt) {
+    // ... existing code ...
     if (!state.apiKey) return "Error: No API Key Configured";
 
     // List of models to try in order of preference
