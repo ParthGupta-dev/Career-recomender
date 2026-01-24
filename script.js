@@ -1,455 +1,313 @@
-// Track input
-const interestInput = document.getElementById('interestInput');
-const wordCountDisplay = document.getElementById('wordCount');
-const resultHeader = document.getElementById('result');
-const loadingDiv = document.getElementById('loading');
-const recommendBtn = document.getElementById('recommendBtn');
+// --- State Management ---
+let state = {
+    apiKey: 'AIzaSyDIuD8SPOGUbnQV01k6kGb9Ec0s27QDhD8',
+    currentView: 'landing',
+    interview: {
+        active: false,
+        role: '',
+        history: [] // Array of {role: 'user'|'model', text: string}
+    }
+};
 
-// Word Count Logic
-interestInput.addEventListener('input', () => {
-    const text = interestInput.value.trim();
-    // Split by spaces, filter out empty strings to count real words
-    const words = text.split(/\s+/).filter(word => word.length > 0);
-    const count = words.length;
+// --- DOM Elements ---
+const views = document.querySelectorAll('.view');
+const apiKeyBtn = document.getElementById('apiKeyBtn');
+const apiModal = document.getElementById('api-modal');
+const apiKeyInput = document.getElementById('api-key-input');
+const saveApiKeyBtn = document.getElementById('save-api-key');
+const closeModalBtn = document.getElementById('close-modal');
 
-    wordCountDisplay.innerText = `${count} / 15 words`;
+// --- Navigation ---
+function navigateTo(viewId) {
+    views.forEach(view => {
+        view.classList.remove('active');
+        view.classList.add('hidden');
+    });
+    const target = document.getElementById(`view-${viewId}`);
+    if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('active');
+        state.currentView = viewId;
+    }
+}
 
-    if (count > 15) {
-        wordCountDisplay.style.color = '#ff4d4d'; // Red warning
-        recommendBtn.disabled = true;
-        recommendBtn.style.opacity = '0.5';
-        recommendBtn.innerText = "Too many words!";
-    } else {
-        wordCountDisplay.style.color = '#eee';
-        recommendBtn.disabled = false;
-        recommendBtn.style.opacity = '1';
-        recommendBtn.innerText = "Get AI Recommendation";
+// --- API Key Management ---
+apiKeyBtn.addEventListener('click', () => {
+    apiModal.classList.remove('hidden');
+    apiKeyInput.value = state.apiKey;
+});
+
+closeModalBtn.addEventListener('click', () => apiModal.classList.add('hidden'));
+
+saveApiKeyBtn.addEventListener('click', () => {
+    const key = apiKeyInput.value.trim();
+    if (key) {
+        state.apiKey = key;
+        localStorage.setItem('gemini_api_key', key);
+        apiModal.classList.add('hidden');
+        alert('API Key Saved!');
     }
 });
 
-recommendBtn.addEventListener('click', async () => {
-    const interests = interestInput.value.trim();
-
-    if (!interests) {
-        resultHeader.innerText = "Please write something about yourself!";
-        return;
+function checkApiKey() {
+    if (!state.apiKey) {
+        alert('Please set your Gemini API Key using the key icon in the top right to use AI features.');
+        apiModal.classList.remove('hidden');
+        return false;
     }
+    return true;
+}
 
-    // Show Loading
-    loadingDiv.classList.remove('hidden');
-    resultHeader.innerText = "";
-    recommendBtn.disabled = true;
+// --- AI Helper ---
+async function callGemini(prompt) {
+    if (!checkApiKey()) return "Error: No API Key";
 
-    // Hide cards and share buttons initially
-    document.getElementById('careerCardsContainer').classList.add('hidden');
-    document.getElementById('shareButtons').classList.add('hidden');
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`;
 
     try {
-        const responseText = await callGemini(interests);
-
-        // Parse JSON response
-        let careerData;
-        try {
-            // Extract JSON from markdown code blocks if present
-            let jsonText = responseText;
-            if (responseText.includes('```json')) {
-                jsonText = responseText.split('```json')[1].split('```')[0].trim();
-            } else if (responseText.includes('```')) {
-                jsonText = responseText.split('```')[1].split('```')[0].trim();
-            }
-
-            careerData = JSON.parse(jsonText);
-        } catch (parseError) {
-            console.error("JSON Parse Error:", parseError);
-            console.log("Raw Response:", responseText);
-            throw new Error("Failed to parse AI response. Please try again.");
-        }
-
-        // Store career data globally for sharing
-        window.currentCareers = careerData.careers;
-        window.currentInterests = interests;
-
-        // Render career cards
-        renderCareerCards(careerData.careers);
-
-        // Show success message
-        resultHeader.innerHTML = "✨ <strong>Your Personalized Career Recommendations:</strong>";
-
-        // Populate dropdown for roadmap
-        const targetSelect = document.getElementById('targetCareer');
-        targetSelect.innerHTML = '<option value="" disabled selected>-- Select a Career --</option>';
-
-        careerData.careers.forEach(career => {
-            const option = document.createElement('option');
-            option.value = career.name;
-            option.innerText = career.name;
-            targetSelect.appendChild(option);
-        });
-
-        // Show the Roadmap Section
-        document.getElementById('roadmapSection').classList.remove('hidden');
-
-        // Show share buttons
-        document.getElementById('shareButtons').classList.remove('hidden');
-
-    } catch (error) {
-        console.error("Full Error Object:", error);
-
-        // Handle Rate Limit / Quota Errors
-        if (error.message.includes('Quota exceeded') || error.message.includes('429')) {
-            resultHeader.innerHTML = `
-                <div style="padding: 20px; background: rgba(255, 165, 0, 0.1); border: 1px solid #FFA500; border-radius: 10px; color: #FFA500;">
-                    <i class="fas fa-hourglass-half" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
-                    <strong>AI is busy!</strong><br>
-                    We hit the free usage limit. Please wait about <strong>60 seconds</strong> before trying again.
-                </div>
-            `;
-        } else {
-            resultHeader.innerHTML = `<span style="color: red; font-size: 1rem;">Error: ${error.message}</span><br><small style="color: #ccc;">Check console (F12) for details.</small>`;
-        }
-    } finally {
-        loadingDiv.classList.add('hidden');
-        recommendBtn.disabled = false;
-    }
-});
-
-async function callGemini(interests) {
-    // Call our serverless function instead of Gemini directly
-    // This keeps the API key secure on the server
-    const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ interests })
-    });
-
-    if (!response.ok) {
-        // Handle 404 (Serverless function not found - likely local testing without Vercel)
-        if (response.status === 404) {
-            throw new Error("Local testing? You must use 'vercel dev' to run serverless functions. Or deploy to Vercel.");
-        }
-
-        let errorMessage = 'Failed to get AI response';
-        try {
-            const errorData = await response.json();
-            // Try to extract message from various common error formats
-            errorMessage = errorData.error?.message || errorData.error || errorMessage;
-            if (typeof errorMessage === 'object') {
-                errorMessage = JSON.stringify(errorMessage);
-            }
-        } catch (e) {
-            // response was not JSON
-            errorMessage = `API Error: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-    return data.response;
-}
-
-// Helper function to get icon for career
-function getCareerIcon(careerName) {
-    const name = careerName.toLowerCase();
-
-    if (name.includes('software') || name.includes('developer') || name.includes('programmer')) {
-        return 'fa-code';
-    } else if (name.includes('data') || name.includes('analyst')) {
-        return 'fa-chart-line';
-    } else if (name.includes('design') || name.includes('ui') || name.includes('ux')) {
-        return 'fa-palette';
-    } else if (name.includes('doctor') || name.includes('medical') || name.includes('health')) {
-        return 'fa-user-md';
-    } else if (name.includes('teacher') || name.includes('education')) {
-        return 'fa-chalkboard-teacher';
-    } else if (name.includes('business') || name.includes('manager')) {
-        return 'fa-briefcase';
-    } else if (name.includes('engineer')) {
-        return 'fa-cogs';
-    } else if (name.includes('artist') || name.includes('creative')) {
-        return 'fa-paint-brush';
-    } else if (name.includes('writer') || name.includes('content')) {
-        return 'fa-pen-fancy';
-    } else if (name.includes('market')) {
-        return 'fa-bullhorn';
-    } else if (name.includes('finance') || name.includes('account')) {
-        return 'fa-dollar-sign';
-    } else {
-        return 'fa-star'; // Default icon
-    }
-}
-
-// Helper function to get trend emoji and class
-function getTrendBadge(trend) {
-    const trendLower = trend.toLowerCase();
-
-    if (trendLower.includes('hot')) {
-        return { emoji: '🔥', text: 'Hot Career', class: 'demand-high' };
-    } else if (trendLower.includes('growing')) {
-        return { emoji: '📈', text: 'Growing', class: 'demand-medium' };
-    } else if (trendLower.includes('stable')) {
-        return { emoji: '💼', text: 'Stable', class: 'demand-medium' };
-    } else {
-        return { emoji: '📉', text: 'Declining', class: 'demand-low' };
-    }
-}
-
-// Render career cards
-function renderCareerCards(careers) {
-    const container = document.getElementById('careerCardsContainer');
-    container.innerHTML = ''; // Clear existing content
-
-    careers.forEach(career => {
-        const card = document.createElement('div');
-        card.className = 'career-card';
-
-        const icon = getCareerIcon(career.name);
-        const trendBadge = getTrendBadge(career.trend);
-
-        // Determine demand badge class
-        let demandClass = 'demand-medium';
-        if (career.demand.toLowerCase() === 'high') {
-            demandClass = 'demand-high';
-        } else if (career.demand.toLowerCase() === 'low') {
-            demandClass = 'demand-low';
-        }
-
-        card.innerHTML = `
-            <div class="career-card-icon">
-                <i class="fas ${icon}"></i>
-            </div>
-            <div class="career-card-title">${career.name}</div>
-            <div class="career-card-description">${career.description}</div>
-            <div class="career-card-market">
-                <div style="margin-bottom: 10px;">
-                    <span class="market-badge ${trendBadge.class}">${trendBadge.emoji} ${trendBadge.text}</span>
-                    <span class="market-badge ${demandClass}">Demand: ${career.demand}</span>
-                </div>
-                <div class="market-insights">💡 ${career.insights}</div>
-            </div>
-        `;
-
-        container.appendChild(card);
-    });
-
-    // Show the container
-    container.classList.remove('hidden');
-}
-
-// Share to Twitter
-function shareToTwitter() {
-    if (!window.currentCareers) return;
-
-    const careersText = window.currentCareers.map(c => c.name).join(', ');
-    const text = `I just discovered my ideal career paths: ${careersText}! 🚀 Check out this AI Career Recommender!`;
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-}
-
-// Share to LinkedIn
-function shareToLinkedIn() {
-    if (!window.currentCareers) return;
-
-    const careersText = window.currentCareers.map(c => c.name).join(', ');
-    const text = `Excited to explore career opportunities in: ${careersText}! AI-powered career guidance is amazing! 💼`;
-    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}&summary=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-}
-
-// Share to WhatsApp
-function shareToWhatsApp() {
-    if (!window.currentCareers) return;
-
-    const careersText = window.currentCareers.map((c, i) => `${i + 1}. ${c.name} - ${c.description}`).join('\n');
-    const text = `🎯 My AI Career Recommendations:\n\n${careersText}\n\nDiscover yours too!`;
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-}
-
-// Copy to Clipboard
-function copyToClipboard() {
-    if (!window.currentCareers) return;
-
-    const careersText = window.currentCareers.map((c, i) =>
-        `${i + 1}. ${c.name}\n   - ${c.description}\n   - Market Demand: ${c.demand}\n   - Trend: ${c.trend}\n   - Insight: ${c.insights}`
-    ).join('\n\n');
-
-    const text = `My AI Career Recommendations:\n\nInterests: ${window.currentInterests}\n\n${careersText}`;
-
-    navigator.clipboard.writeText(text).then(() => {
-        // Show confirmation
-        const btn = event.target.closest('.share-btn');
-        const originalHTML = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-        btn.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
-
-        setTimeout(() => {
-            btn.innerHTML = originalHTML;
-            btn.style.background = '';
-        }, 2000);
-    }).catch(err => {
-        alert('Failed to copy to clipboard');
-        console.error('Copy error:', err);
-    });
-}
-
-// Generate PDF
-function generatePDF() {
-    if (!window.currentCareers) return;
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    // Title
-    doc.setFontSize(20);
-    doc.setTextColor(255, 127, 80);
-    doc.text('AI Career Recommendations', 20, 20);
-
-    // Interests
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Your Interests:', 20, 35);
-    doc.setFontSize(10);
-    doc.text(window.currentInterests, 20, 42, { maxWidth: 170 });
-
-    let yPosition = 55;
-
-    // Careers
-    window.currentCareers.forEach((career, index) => {
-        // Check if we need a new page
-        if (yPosition > 250) {
-            doc.addPage();
-            yPosition = 20;
-        }
-
-        // Career number and name
-        doc.setFontSize(14);
-        doc.setTextColor(255, 127, 80);
-        doc.text(`${index + 1}. ${career.name}`, 20, yPosition);
-        yPosition += 8;
-
-        // Description
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        doc.text('Why it fits:', 25, yPosition);
-        yPosition += 5;
-        doc.text(career.description, 25, yPosition, { maxWidth: 165 });
-        yPosition += 10;
-
-        // Market data
-        doc.text(`Market Demand: ${career.demand} | Trend: ${career.trend}`, 25, yPosition);
-        yPosition += 5;
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Insight: ${career.insights}`, 25, yPosition, { maxWidth: 165 });
-        yPosition += 12;
-
-        // Reset color
-        doc.setTextColor(0, 0, 0);
-    });
-
-    // Add roadmap if available
-    const roadmapResult = document.getElementById('roadmapResult');
-    if (roadmapResult && roadmapResult.innerText.trim()) {
-        if (yPosition > 200) {
-            doc.addPage();
-            yPosition = 20;
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(255, 127, 80);
-        doc.text('Your Career Roadmap', 20, yPosition);
-        yPosition += 10;
-
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        const roadmapText = roadmapResult.innerText.substring(0, 1000); // Limit length
-        doc.text(roadmapText, 20, yPosition, { maxWidth: 170 });
-    }
-
-    // Footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Generated by AI Career Recommender - Page ${i} of ${pageCount}`, 20, 285);
-    }
-
-    // Download
-    doc.save('My-Career-Recommendations.pdf');
-}
-
-// ROADMAP LOGIC
-const roadmapBtn = document.getElementById('roadmapBtn');
-const roadmapResult = document.getElementById('roadmapResult');
-const roadmapLoading = document.getElementById('roadmapLoading');
-const roadmapSection = document.getElementById('roadmapSection');
-
-roadmapBtn.addEventListener('click', async () => {
-    const current = document.getElementById('currentPosition').value;
-    const target = document.getElementById('targetCareer').value;
-
-    if (!current || !target) {
-        alert("Please fill in both Current Status and Goal Career.");
-        return;
-    }
-
-    roadmapLoading.classList.remove('hidden');
-    roadmapResult.innerHTML = "";
-    roadmapBtn.disabled = true;
-
-    const prompt = `Create a specific, simple 5-step roadmap for someone who is currently a "${current}" and wants to become a "${target}".
-    For each step:
-    1. Give a bold title (e.g., **Step 1: Learn Basics**).
-    2. One sentence of advice.
-    Format as a Markdown list.`;
-
-    try {
-        // Call our serverless function instead of Gemini directly
-        const response = await fetch('/api/roadmap', {
+        const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                currentPosition: current,
-                targetCareer: target
+                contents: [{ parts: [{ text: prompt }] }]
             })
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to generate roadmap');
-        }
-
         const data = await response.json();
-        const text = data.response;
-
-        roadmapResult.innerHTML = marked.parse(text);
-
-        // Add Payment Request
-        roadmapResult.innerHTML += `
-            <div style="margin-top: 30px; padding: 20px; background: rgba(255, 215, 0, 0.1); border: 1px solid #ffd700; border-radius: 15px; text-align: center;">
-                <h3 style="color: #ffd700; margin-bottom: 10px;">💎 Unlock Complete Mentorship</h3>
-                <p style="margin-bottom: 15px;">Get detailed resources, contact info for mentors, and a certification for this path.</p>
-                <button style="background: #ffd700; color: #333; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: transform 0.2s;">
-                    Pay ₹1500/-
-                </button>
-            </div>
-        `;
-    } catch (e) {
-        console.error(e);
-
-        if (e.message.includes('Quota exceeded') || e.message.includes('429')) {
-            roadmapResult.innerHTML = `
-                <div style="padding: 15px; color: #FFA500; text-align: center;">
-                    ⚠️ Quota limit reached. Please wait 1 minute and try again.
-                </div>
-            `;
-        } else {
-            roadmapResult.innerHTML = "Error generating roadmap. Try again.";
-        }
-    } finally {
-        roadmapLoading.classList.add('hidden');
-        roadmapBtn.disabled = false;
+        if (data.error) throw new Error(data.error.message);
+        return data.candidates[0].content.parts[0].text;
+    } catch (error) {
+        console.error('AI Error:', error);
+        return `Error calling AI: ${error.message}`;
     }
+}
+
+// --- Feature 1: Roadmap Generator ---
+const generateRoadmapBtn = document.getElementById('generateRoadmapBtn');
+const roadmapDisplay = document.getElementById('roadmap-display');
+
+generateRoadmapBtn.addEventListener('click', async () => {
+    const career = document.getElementById('roadmap-career-select').value;
+    const currentPos = document.getElementById('roadmap-current-pos').value;
+
+    if (!career || !currentPos) {
+        alert('Please fill in both fields');
+        return;
+    }
+
+    roadmapDisplay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating your personalized roadmap...';
+    roadmapDisplay.classList.remove('hidden');
+
+    const prompt = `I am currently a ${currentPos} and I want to become a ${career}. Create a detailed step-by-step roadmap for me. Break it down into stages (Beginner, Intermediate, Advanced) with estimated timelines and key skills to learn. format using markdown.`;
+
+    // Simple markdown parser for display
+    const rawText = await callGemini(prompt);
+    roadmapDisplay.innerHTML = parseMarkdown(rawText);
 });
+
+// --- Feature 2: Resume Analyzer ---
+const analyzeResumeBtn = document.getElementById('analyzeResumeBtn');
+const resumeUpload = document.getElementById('resume-upload');
+const dropZone = document.getElementById('drop-zone');
+const fileNameDisplay = document.getElementById('file-name-display');
+const resumeFeedback = document.getElementById('resume-feedback');
+let resumeText = '';
+
+// Drag & Drop
+dropZone.addEventListener('click', () => resumeUpload.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--glass-border)'; });
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--glass-border)';
+    handleFile(e.dataTransfer.files[0]);
+});
+resumeUpload.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+async function handleFile(file) {
+    if (file && file.type === 'application/pdf') {
+        fileNameDisplay.textContent = `Selected: ${file.name}`;
+        resumeText = await extractPdfText(file);
+    } else {
+        alert('Please upload a PDF file.');
+    }
+}
+
+async function extractPdfText(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        fullText += textContent.items.map(item => item.str).join(' ');
+    }
+    return fullText;
+}
+
+analyzeResumeBtn.addEventListener('click', async () => {
+    const role = document.getElementById('resume-role-input').value;
+    if (!resumeText || !role) {
+        alert('Please upload a resume and enter a desired role.');
+        return;
+    }
+
+    resumeFeedback.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing resume match...';
+    resumeFeedback.classList.remove('hidden');
+
+    const prompt = `
+    Job Role: ${role}
+    Resume Content: ${resumeText.substring(0, 10000)} ... [truncated]
+    
+    Task: Analyze if this resume is a good fit for the role. 
+    1. Give a match score (0-100%).
+    2. List CRITICAL MISSING SKILLS.
+    3. Suggest improvements.
+    Format clearly in markdown.
+    `;
+
+    const rawText = await callGemini(prompt);
+    resumeFeedback.innerHTML = parseMarkdown(rawText);
+});
+
+// --- Feature 3: Mock Interview ---
+const startInterviewBtn = document.getElementById('startInterviewBtn');
+const interviewChat = document.getElementById('interview-chat');
+const interviewSetup = document.getElementById('interview-setup');
+const chatHistoryDiv = document.getElementById('chat-history');
+const userResponseInput = document.getElementById('user-response');
+const sendResponseBtn = document.getElementById('sendResponseBtn');
+
+startInterviewBtn.addEventListener('click', async () => {
+    const role = document.getElementById('interview-role').value;
+    if (!role) {
+        alert('Please enter a role for the interview.');
+        return;
+    }
+
+    state.interview.active = true;
+    state.interview.role = role;
+    state.interview.history = [];
+
+    interviewSetup.classList.add('hidden');
+    interviewChat.classList.remove('hidden');
+
+    // Initial Question
+    addMessageToChat('ai', `Starting interview for ${role}. I will ask you questions. Ready? Tell me about yourself.`);
+    state.interview.history.push({ role: 'model', parts: [{ text: `You are a professional technical interviewer interviewing a candidate for the role of ${role}. Start by asking them to introduce themselves.` }] });
+});
+
+sendResponseBtn.addEventListener('click', handleInterviewResponse);
+userResponseInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleInterviewResponse();
+});
+
+async function handleInterviewResponse() {
+    const response = userResponseInput.value.trim();
+    if (!response) return;
+
+    // Add user message
+    addMessageToChat('user', response);
+    userResponseInput.value = '';
+
+    // Loading state
+    const loadingId = addMessageToChat('ai', '<i class="fas fa-spinner fa-spin"></i> Thinking...');
+
+    // Construct Prompt with History context (simplified for single-turn stateless feel or basic appended history)
+    // For better results in a real app, maintain proper history array.
+
+    const prompt = `
+    Context: You are interviewing a candidate for ${state.interview.role}.
+    Current Conversation History:
+    ${state.interview.history.map(m => `${m.role}: ${m.parts[0].text}`).join('\n')}
+    Candidate Answer: ${response}
+    
+    Task: Evaluate the answer briefly (internally), then ask the NEXT relevant interview question. 
+    If the answer was weak, ask a follow-up. 
+    Include a mix of technical and behavioral questions.
+    Keep your response concise (just the next question or feedback + question).
+    `;
+
+    const aiReply = await callGemini(prompt);
+
+    // Update history
+    state.interview.history.push({ role: 'user', parts: [{ text: response }] });
+    state.interview.history.push({ role: 'model', parts: [{ text: aiReply }] });
+
+    // Remove loading and show reply
+    const loadingElem = document.getElementById(loadingId);
+    if (loadingElem) loadingElem.remove();
+    addMessageToChat('ai', aiReply);
+}
+
+function addMessageToChat(sender, text) {
+    const id = 'msg-' + Date.now();
+    const div = document.createElement('div');
+    div.className = `message ${sender}`;
+    div.id = id;
+    div.innerHTML = `
+        <div class="avatar"><i class="fas fa-${sender === 'ai' ? 'robot' : 'user'}"></i></div>
+        <div class="bubble">${text}</div>
+    `;
+    chatHistoryDiv.appendChild(div);
+    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+    return id;
+}
+
+// --- Feature 4: Skill Check (Simple) ---
+const checkSkillsBtn = document.getElementById('checkSkillsBtn');
+const skillDisplay = document.getElementById('skill-display');
+
+checkSkillsBtn.addEventListener('click', async () => {
+    const role = document.getElementById('skill-role-input').value;
+    if (!role) return;
+
+    skillDisplay.classList.remove('hidden');
+    skillDisplay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Forecasting skills...';
+
+    const prompt = `What are the required skills for a ${role} today, and what skills will be critical in 2-3 years? Provide a bulleted list.`;
+    const text = await callGemini(prompt);
+    skillDisplay.innerHTML = parseMarkdown(text);
+});
+
+
+// --- Feature 5: Legacy Interest Selector (Adapted) ---
+const selectedInterests = new Set();
+document.querySelectorAll('.interest-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const value = btn.dataset.value;
+        if (selectedInterests.has(value)) {
+            selectedInterests.delete(value);
+            btn.classList.remove('selected');
+        } else {
+            selectedInterests.add(value);
+            btn.classList.add('selected');
+        }
+    });
+});
+
+document.getElementById('recommendBtn').addEventListener('click', async () => {
+    if (selectedInterests.size === 0) {
+        alert("Please select at least one interest!");
+        return;
+    }
+
+    const interests = Array.from(selectedInterests).join(', ');
+    const resultBox = document.getElementById('interest-result');
+    resultBox.classList.remove('hidden');
+    resultBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI is finding your perfect match...';
+
+    const prompt = `Based on these interests: [${interests}], suggest top 3 suitable career paths with a brief explanation for each.`;
+    const text = await callGemini(prompt);
+    resultBox.innerHTML = parseMarkdown(text);
+});
+
+
+// --- Helper: Simple Markdown Parser ---
+function parseMarkdown(text) {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>')
+        .replace(/- /g, '• ');
+}

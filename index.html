@@ -4,106 +4,194 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stylish Career Recommender</title>
+  <title>NextGen Career AI</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Font Awesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts for premium typography -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- PDF.js for resume parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
+
+  <!-- Firebase Scripts (Preserved for Auth) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 </head>
 
 <body>
-  <div class="overlay"></div>
-
-  <div id="logoutContainer">
-    <button id="logoutBtn" onclick="logout()">Logout</button>
+  <div class="background-globes">
+    <div class="globe globe-1"></div>
+    <div class="globe globe-2"></div>
+    <div class="globe globe-3"></div>
   </div>
 
-  <div class="container">
-    <h1>AI Career Recommender</h1>
-    <p>Tell us about your hobbies, favorite subjects, or passions:</p>
-
-    <div class="input-group">
-      <textarea id="interestInput"
-        placeholder="e.g. I love solving math puzzles, playing video games, and drawing anime characters..."
-        rows="4"></textarea>
-      <p id="wordCount" style="font-size: 0.8rem; color: #eee; margin-top: 5px;">0 / 15 words</p>
-    </div>
-    <button id="recommendBtn">Get AI Recommendation</button>
-
-    <div id="loading" class="hidden">
-      <div class="spinner"></div>
-      <p>Analyzing with AI...</p>
-    </div>
-
-    <h2 id="result"></h2>
-
-    <!-- Career Cards Container -->
-    <div id="careerCardsContainer" class="career-cards-container hidden"></div>
-
-    <!-- Share Buttons -->
-    <div id="shareButtons" class="share-buttons hidden">
-      <h3>📤 Share Your Results</h3>
-      <div class="share-btn-group">
-        <button class="share-btn twitter" onclick="shareToTwitter()">
-          <i class="fab fa-twitter"></i> Twitter
-        </button>
-        <button class="share-btn linkedin" onclick="shareToLinkedIn()">
-          <i class="fab fa-linkedin"></i> LinkedIn
-        </button>
-        <button class="share-btn whatsapp" onclick="shareToWhatsApp()">
-          <i class="fab fa-whatsapp"></i> WhatsApp
-        </button>
-        <button class="share-btn copy" onclick="copyToClipboard()">
-          <i class="fas fa-copy"></i> Copy
-        </button>
-        <button class="share-btn pdf" onclick="generatePDF()">
-          <i class="fas fa-file-pdf"></i> Download PDF
-        </button>
+  <div class="glass-container">
+    <!-- Navigation / Header -->
+    <header>
+      <div class="logo">NextGen<span class="highlight">Career</span></div>
+      <div class="header-actions">
+        <button id="apiKeyBtn" class="api-btn" title="Set Gemini API Key"><i class="fas fa-key"></i></button>
+        <button id="logoutBtn" class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
       </div>
-    </div>
+    </header>
 
-    <!-- Roadmap Configuration Section (Hidden initially or shown after result) -->
-    <div id="roadmapSection" class="hidden"
-      style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-      <h3>🚀 Career Roadmap Generator</h3>
-      <p>Want a plan? Tell us where you are now:</p>
+    <!-- Dynamic Content Area -->
+    <main id="app">
+      <!-- VIEW 1: LANDING SELECTION -->
+      <section id="view-landing" class="view active">
+        <h2>How can we help you today?</h2>
+        <div class="cards-container">
+          <div class="card" onclick="navigateTo('interest-selector')">
+            <i class="fas fa-compass"></i>
+            <h3>Discover Career</h3>
+            <p>Based on your interests</p>
+          </div>
+          <div class="card" onclick="navigateTo('roadmap-input')">
+            <i class="fas fa-road"></i>
+            <h3>Get Roadmap</h3>
+            <p>From current role to dream job</p>
+          </div>
+          <div class="card" onclick="navigateTo('skill-check')">
+            <i class="fas fa-check-double"></i>
+            <h3>Skill Check</h3>
+            <p>Required skills for a specific role</p>
+          </div>
+          <div class="card" onclick="navigateTo('resume-analyzer')">
+            <i class="fas fa-file-alt"></i>
+            <h3>Resume Analysis</h3>
+            <p>Check fit for your dream job</p>
+          </div>
+          <div class="card" onclick="navigateTo('mock-interview')">
+            <i class="fas fa-user-tie"></i>
+            <h3>Mock Interview</h3>
+            <p>Practice with AI interviewer</p>
+          </div>
+        </div>
+      </section>
 
-      <div class="form-group" style="text-align: left; max-width: 400px; margin: 0 auto;">
-        <label for="currentPosition">Current Status (e.g., High School Student, Layout Artist)</label>
-        <input type="text" id="currentPosition" placeholder="e.g. 10th Grade Student"
-          style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: none;">
+      <!-- VIEW 2: INTEREST SELECTOR (Legacy improved) -->
+      <section id="view-interest-selector" class="view hidden">
+        <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2>Select Your Interests</h2>
+        <div class="interests-grid">
+          <button class="interest-btn" data-value="math"><i class="fas fa-calculator"></i> Math</button>
+          <button class="interest-btn" data-value="coding"><i class="fas fa-code"></i> Coding</button>
+          <button class="interest-btn" data-value="design"><i class="fas fa-paint-brush"></i> Design</button>
+          <button class="interest-btn" data-value="writing"><i class="fas fa-pen-nib"></i> Writing</button>
+          <button class="interest-btn" data-value="business"><i class="fas fa-briefcase"></i> Business</button>
+          <button class="interest-btn" data-value="ai"><i class="fas fa-brain"></i> AI / ML</button>
+          <button class="interest-btn" data-value="finance"><i class="fas fa-chart-line"></i> Finance</button>
+          <button class="interest-btn" data-value="health"><i class="fas fa-heartbeat"></i> Health</button>
+          <button class="interest-btn" data-value="law"><i class="fas fa-gavel"></i> Law</button>
+          <button class="interest-btn" data-value="arts"><i class="fas fa-palette"></i> Arts</button>
+        </div>
+        <button class="action-btn" id="recommendBtn">Reveal My Career</button>
+        <div id="interest-result" class="result-box hidden"></div>
+      </section>
 
-        <label for="targetCareer">Goal Career (Select from AI results)</label>
-        <select id="targetCareer"
-          style="width: 100%; padding: 10px; border-radius: 8px; border: none; background: white; color: #333;">
-          <option value="" disabled selected>-- Wait for AI Results --</option>
-        </select>
+      <!-- VIEW 3: ROADMAP INPUT -->
+      <section id="view-roadmap-input" class="view hidden">
+        <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2>Design Your Path</h2>
+        <div class="form-group">
+          <label>Select Desired Career</label>
+          <select id="roadmap-career-select">
+            <option value="" disabled selected>Choose a career...</option>
+            <option value="Software Engineer">Software Engineer</option>
+            <option value="Data Scientist">Data Scientist</option>
+            <option value="Product Manager">Product Manager</option>
+            <option value="UX Designer">UX Designer</option>
+            <option value="Digital Marketer">Digital Marketer</option>
+            <option value="Financial Analyst">Financial Analyst</option>
+            <!-- Add more dynamically or statically -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Current Position</label>
+          <input type="text" id="roadmap-current-pos" placeholder="e.g., Student, Junior Dev, Accountant">
+        </div>
+        <button class="action-btn" id="generateRoadmapBtn">Generate Roadmap</button>
+        <div id="roadmap-display" class="result-display hidden"></div>
+      </section>
+
+      <!-- VIEW 4: SKILL CHECK -->
+      <section id="view-skill-check" class="view hidden">
+        <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2>Future-Proof Skill Check</h2>
+        <div class="form-group">
+          <label>Target Role</label>
+          <input type="text" id="skill-role-input" placeholder="e.g. AI Engineer">
+        </div>
+        <button class="action-btn" id="checkSkillsBtn">Analyze Skills</button>
+        <div id="skill-display" class="result-display hidden"></div>
+      </section>
+
+      <!-- VIEW 5: RESUME ANALYZER -->
+      <section id="view-resume-analyzer" class="view hidden">
+        <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2>Resume Fit Check</h2>
+        <div class="form-group">
+          <label>Desired Job Role</label>
+          <input type="text" id="resume-role-input" placeholder="e.g. Frontend Developer">
+        </div>
+        <div class="upload-area" id="drop-zone">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Drag & Drop PDF or Click to Upload</p>
+          <input type="file" id="resume-upload" accept=".pdf" hidden>
+        </div>
+        <div id="file-name-display"></div>
+        <button class="action-btn" id="analyzeResumeBtn">Analyze Resume</button>
+        <div id="resume-feedback" class="result-display hidden"></div>
+      </section>
+
+      <!-- VIEW 6: MOCK INTERVIEW -->
+      <section id="view-mock-interview" class="view hidden">
+        <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2>AI Mock Interview</h2>
+        <div class="setup-interview" id="interview-setup">
+          <div class="form-group">
+            <label>Interview Role</label>
+            <input type="text" id="interview-role" placeholder="e.g. Backend Engineer">
+          </div>
+          <button class="action-btn" id="startInterviewBtn">Start Interview</button>
+        </div>
+
+        <div class="chat-interface hidden" id="interview-chat">
+          <div class="chat-history" id="chat-history">
+            <!-- Messages go here -->
+            <div class="message ai">
+              <div class="avatar"><i class="fas fa-robot"></i></div>
+              <div class="bubble">Hello! I'm your AI interviewer. Ready to begin?</div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" id="user-response" placeholder="Type your answer...">
+            <button id="sendResponseBtn"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="api-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Enter Gemini API Key</h3>
+      <p>To use AI features, please provide your API key. It is stored locally in your browser.</p>
+      <input type="password" id="api-key-input" placeholder="Paste API Key here">
+      <div class="modal-actions">
+        <button id="save-api-key">Save</button>
+        <button id="close-modal" class="secondary">Cancel</button>
       </div>
-
-      <button id="roadmapBtn" class="interest-btn" style="background: #2575fc; margin-top: 15px;">Generate
-        Roadmap</button>
-
-      <div id="roadmapLoading" class="hidden">
-        <div class="spinner"></div>
-        <p>Planning your journey...</p>
-      </div>
-
-      <div id="roadmapResult"></div>
     </div>
   </div>
 
-  <!-- Firebase Scripts (Compatibility Version) -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-
-  <!-- Marked library for markdown parsing (Gemini returns markdown) -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-  <!-- jsPDF for PDF generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-  <!-- App Scripts -->
+  <!-- Existing Auth Scripts -->
   <script src="config.js"></script>
   <script src="auth.js"></script>
+  <!-- Main App Script -->
   <script src="script.js"></script>
 </body>
 
