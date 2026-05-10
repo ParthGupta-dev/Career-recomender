@@ -1,6 +1,6 @@
 // --- State Management ---
 let state = {
-    apiKey: 'AIzaSyDIuD8SPOGUbnQV01k6kGb9Ec0s27QDhD8',
+    apiKey: '', // DO NOT PUT YOUR API KEY HERE. Use config.js or environment variables.
     currentView: 'landing',
     interview: {
         active: false,
