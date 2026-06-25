@@ -1,140 +1,70 @@
-// LLM helper function to call Gemini, ChatGPT, Claude, or Groq dynamically based on environment variables
-export async function callLLM(prompt) {
-    const provider = (process.env.LLM_PROVIDER || 'gemini').toLowerCase();
-    const apiKey = process.env.LLM_API_KEY;
+// api/_llmHelper.js
+// Tries Gemini first. If it fails for ANY reason (rate limit, bad key,
+// network issue, bad response), falls through to Groq automatically.
 
-    if (!apiKey) {
-        throw new Error(`LLM_API_KEY is not configured in the environment variables.`);
-    }
-
-    switch (provider) {
-        case 'gemini': {
+const PROVIDERS = [
+    {
+        name: 'gemini',
+        keyEnv: 'GEMINI_API_KEY',
+        call: async (prompt, apiKey) => {
             const model = 'gemini-2.5-flash';
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
             const response = await fetch(url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: prompt
-                        }]
-                    }]
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
-
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error?.message || 'Failed to get response from Gemini API');
+                throw new Error(errorData.error?.message || `Gemini request failed (${response.status})`);
             }
-
             const data = await response.json();
-            if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                throw new Error('Invalid response format received from Gemini API');
-            }
-            return data.candidates[0].content.parts[0].text;
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) throw new Error('Invalid response format from Gemini');
+            return text;
         }
-
-        case 'chatgpt': {
-            const model = 'gpt-4o-mini';
-            const url = 'https://api.openai.com/v1/chat/completions';
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{
-                        role: 'user',
-                        content: prompt
-                    }]
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error?.message || 'Failed to get response from OpenAI API');
-            }
-
-            const data = await response.json();
-            if (!data.choices?.[0]?.message?.content) {
-                throw new Error('Invalid response format received from OpenAI API');
-            }
-            return data.choices[0].message.content;
-        }
-
-        case 'claude': {
-            const model = 'claude-3-5-sonnet-20241022';
-            const url = 'https://api.anthropic.com/v1/messages';
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01'
-                },
-                body: JSON.stringify({
-                    model: model,
-                    max_tokens: 2048,
-                    messages: [{
-                        role: 'user',
-                        content: prompt
-                    }]
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error?.message || 'Failed to get response from Anthropic API');
-            }
-
-            const data = await response.json();
-            if (!data.content?.[0]?.text) {
-                throw new Error('Invalid response format received from Anthropic API');
-            }
-            return data.content[0].text;
-        }
-
-        case 'groq': {
+    },
+    {
+        name: 'groq',
+        keyEnv: 'GROQ_API_KEY',
+        call: async (prompt, apiKey) => {
             const model = 'llama-3.3-70b-versatile';
-            const url = 'https://api.groq.com/openai/v1/chat/completions';
-
-            const response = await fetch(url, {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{
-                        role: 'user',
-                        content: prompt
-                    }]
-                })
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
             });
-
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error?.message || 'Failed to get response from Groq API');
+                throw new Error(errorData.error?.message || `Groq request failed (${response.status})`);
             }
-
             const data = await response.json();
-            if (!data.choices?.[0]?.message?.content) {
-                throw new Error('Invalid response format received from Groq API');
-            }
-            return data.choices[0].message.content;
-        }
-
-        default: {
-            throw new Error(`Unsupported LLM provider: ${provider}`);
+            const text = data.choices?.[0]?.message?.content;
+            if (!text) throw new Error('Invalid response format from Groq');
+            return text;
         }
     }
+];
+
+export async function callLLM(prompt) {
+    const failures = [];
+
+    for (const provider of PROVIDERS) {
+        const apiKey = process.env[provider.keyEnv];
+        if (!apiKey) {
+            failures.push(`${provider.name}: ${provider.keyEnv} not set`);
+            continue;
+        }
+        try {
+            return await provider.call(prompt, apiKey);
+        } catch (err) {
+            console.warn(`Provider ${provider.name} failed:`, err.message);
+            failures.push(`${provider.name}: ${err.message}`);
+        }
+    }
+
+    throw new Error(`All providers failed. ${failures.join(' | ')}`);
 }
