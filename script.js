@@ -70,7 +70,7 @@ async function callGemini(prompt) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to get response from serverless function.');
+            throw new Error(errorData.details || errorData.error || 'Failed to get response from serverless function.');
         }
 
         const data = await response.json();
