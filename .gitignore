@@ -12,7 +12,9 @@ node_modules/
 *.env.local
 
 # --- Configuration Files (Containing Secrets) ---
-config.js
+# config.js is intentionally NOT gitignored — Firebase web client config
+# is protected by Security Rules, not obscurity. Gitignoring it causes
+# 404 on deploy → ReferenceError on CONFIG.
 firebase-config.js
 secrets.js
 

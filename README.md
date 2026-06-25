@@ -14,7 +14,7 @@ An AI-powered career recommendation system that helps students discover career p
 
 ## 🌐 Live Demo
 
-Deploy your own: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=your-repo-url)
+Deploy your own with [Vercel](https://vercel.com) — see deployment instructions below.
 
 ## 🛠️ Tech Stack
 
@@ -139,7 +139,7 @@ This project is open source and available under the MIT License.
 
 ## 👤 Author
 
-Created with ❤️ by [Your Name]
+Created with ❤️ by Vedant
 
 ---
 

@@ -1,6 +1,5 @@
 // --- State Management ---
 let state = {
-    apiKey: '', // DO NOT PUT YOUR API KEY HERE. Use config.js or environment variables.
     currentView: 'landing',
     interview: {
         active: false,
@@ -9,10 +8,31 @@ let state = {
     }
 };
 
-// --- DOM Elements ---
+// --- Gemini API Key (client-side for local/demo use) ---
+const GEMINI_API_KEY = 'AIzaSyDIuD8SPOGUbnQV01k6kGb9Ec0s27QDhD8';
+
 // --- DOM Elements ---
 const views = document.querySelectorAll('.view');
-// API Key elements removed
+const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+
+// --- Sidebar Mobile Toggle ---
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+if (hamburgerBtn) {
+    hamburgerBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        sidebarOverlay.classList.toggle('active');
+    });
+}
+
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('active');
+    });
+}
 
 // --- Navigation ---
 function navigateTo(viewId) {
@@ -26,14 +46,22 @@ function navigateTo(viewId) {
         target.classList.add('active');
         state.currentView = viewId;
     }
+
+    // Update sidebar active state
+    navItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.view === viewId) {
+            item.classList.add('active');
+        }
+    });
+
+    // Close mobile sidebar
+    if (sidebar) sidebar.classList.remove('open');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
 }
 
-// --- AI Helper ---
-// --- AI Helper ---
+// --- AI Helper (calls Gemini directly with API key) ---
 async function callGemini(prompt) {
-    if (!state.apiKey) return "Error: No API Key Configured";
-
-    // Valid models from user's list
     const models = [
         'gemini-2.0-flash',
         'gemini-2.5-flash',
@@ -43,7 +71,7 @@ async function callGemini(prompt) {
     let lastError = null;
 
     for (const model of models) {
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`;
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
         try {
             const response = await fetch(API_URL, {
@@ -73,6 +101,17 @@ async function callGemini(prompt) {
     return `AI Error: Could not connect to models. Last error: ${lastError}`;
 }
 
+// --- Markdown Renderer (Marked.js) ---
+function renderMarkdown(text) {
+    if (typeof marked !== 'undefined') {
+        return marked.parse(text);
+    }
+    // Fallback if Marked.js failed to load
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+}
+
 // --- Feature 1: Roadmap Generator ---
 const generateRoadmapBtn = document.getElementById('generateRoadmapBtn');
 const roadmapDisplay = document.getElementById('roadmap-display');
@@ -91,9 +130,8 @@ generateRoadmapBtn.addEventListener('click', async () => {
 
     const prompt = `I am currently a ${currentPos} and I want to become a ${career}. Create a detailed step-by-step roadmap for me. Break it down into stages (Beginner, Intermediate, Advanced) with estimated timelines and key skills to learn. format using markdown.`;
 
-    // Simple markdown parser for display
     const rawText = await callGemini(prompt);
-    roadmapDisplay.innerHTML = parseMarkdown(rawText);
+    roadmapDisplay.innerHTML = renderMarkdown(rawText);
 });
 
 // --- Feature 2: Resume Analyzer ---
@@ -106,11 +144,11 @@ let resumeText = '';
 
 // Drag & Drop
 dropZone.addEventListener('click', () => resumeUpload.click());
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
-dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--glass-border)'; });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border-strong)'; });
 dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    dropZone.style.borderColor = 'var(--glass-border)';
+    dropZone.style.borderColor = 'var(--border-strong)';
     handleFile(e.dataTransfer.files[0]);
 });
 resumeUpload.addEventListener('change', (e) => handleFile(e.target.files[0]));
@@ -159,7 +197,7 @@ analyzeResumeBtn.addEventListener('click', async () => {
     `;
 
     const rawText = await callGemini(prompt);
-    resumeFeedback.innerHTML = parseMarkdown(rawText);
+    resumeFeedback.innerHTML = renderMarkdown(rawText);
 });
 
 // --- Feature 3: Mock Interview ---
@@ -202,12 +240,10 @@ async function handleInterviewResponse() {
     addMessageToChat('user', response);
     userResponseInput.value = '';
 
-    // Loading state
-    const loadingId = addMessageToChat('ai', '<i class="fas fa-spinner fa-spin"></i> Thinking...');
+    // Show typing indicator instead of static spinner
+    const loadingId = addTypingIndicator();
 
-    // Construct Prompt with History context (simplified for single-turn stateless feel or basic appended history)
-    // For better results in a real app, maintain proper history array.
-
+    // Construct Prompt with History context
     const prompt = `
     Context: You are interviewing a candidate for ${state.interview.role}.
     Current Conversation History:
@@ -226,7 +262,7 @@ async function handleInterviewResponse() {
     state.interview.history.push({ role: 'user', parts: [{ text: response }] });
     state.interview.history.push({ role: 'model', parts: [{ text: aiReply }] });
 
-    // Remove loading and show reply
+    // Remove typing indicator and show reply
     const loadingElem = document.getElementById(loadingId);
     if (loadingElem) loadingElem.remove();
     addMessageToChat('ai', aiReply);
@@ -239,14 +275,35 @@ function addMessageToChat(sender, text) {
     div.id = id;
     div.innerHTML = `
         <div class="avatar"><i class="fas fa-${sender === 'ai' ? 'robot' : 'user'}"></i></div>
-        <div class="bubble">${text}</div>
+        <div class="bubble">${sender === 'ai' ? renderMarkdown(text) : text}</div>
     `;
     chatHistoryDiv.appendChild(div);
     chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
     return id;
 }
 
-// --- Feature 4: Skill Check (Simple) ---
+// Typing indicator — 3 animated dots
+function addTypingIndicator() {
+    const id = 'typing-' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'message ai';
+    div.id = id;
+    div.innerHTML = `
+        <div class="avatar"><i class="fas fa-robot"></i></div>
+        <div class="bubble">
+            <div class="typing-indicator">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+    `;
+    chatHistoryDiv.appendChild(div);
+    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+    return id;
+}
+
+// --- Feature 4: Skill Check ---
 const checkSkillsBtn = document.getElementById('checkSkillsBtn');
 const skillDisplay = document.getElementById('skill-display');
 
@@ -259,11 +316,11 @@ checkSkillsBtn.addEventListener('click', async () => {
 
     const prompt = `What are the required skills for a ${role} today, and what skills will be critical in 2-3 years? Provide a bulleted list.`;
     const text = await callGemini(prompt);
-    skillDisplay.innerHTML = parseMarkdown(text);
+    skillDisplay.innerHTML = renderMarkdown(text);
 });
 
 
-// --- Feature 5: Legacy Interest Selector (Adapted) ---
+// --- Feature 5: Interest Selector ---
 const selectedInterests = new Set();
 document.querySelectorAll('.interest-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -291,14 +348,5 @@ document.getElementById('recommendBtn').addEventListener('click', async () => {
 
     const prompt = `Based on these interests: [${interests}], suggest top 3 suitable career paths with a brief explanation for each.`;
     const text = await callGemini(prompt);
-    resultBox.innerHTML = parseMarkdown(text);
+    resultBox.innerHTML = renderMarkdown(text);
 });
-
-
-// --- Helper: Simple Markdown Parser ---
-function parseMarkdown(text) {
-    return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>')
-        .replace(/- /g, '• ');
-}

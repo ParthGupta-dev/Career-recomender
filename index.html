@@ -4,15 +4,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NextGen Career AI</title>
+  <title>NextGen Career AI — Discover Your Path</title>
+  <meta name="description" content="AI-powered career recommendations, roadmaps, skill analysis, resume fit checks, and mock interviews. Built with Google Gemini.">
   <link rel="stylesheet" href="style.css">
-  <!-- Google Fonts for premium typography -->
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- Fonts: Space Grotesk for headings, Outfit for body -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <!-- FontAwesome for Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- PDF.js for resume parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
+  <!-- Marked.js for real markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <!-- Firebase Scripts (Preserved for Auth) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -20,59 +23,97 @@
 </head>
 
 <body>
-  <div class="background-globes">
-    <div class="globe globe-1"></div>
-    <div class="globe globe-2"></div>
-    <div class="globe globe-3"></div>
-  </div>
+  <div class="app-shell">
 
-  <div class="glass-container">
-    <!-- Navigation / Header -->
-    <header>
+    <!-- Mobile Top Bar -->
+    <div class="mobile-topbar">
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu">
+        <i class="fas fa-bars"></i>
+      </button>
       <div class="logo">NextGen<span class="highlight">Career</span></div>
-      <div class="header-actions">
-        <button id="logoutBtn" class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
-      </div>
-    </header>
+      <div style="width: 40px;"></div> <!-- spacer for centering -->
+    </div>
 
-    <!-- Dynamic Content Area -->
-    <main id="app">
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo">NextGen<span class="highlight">Career</span></div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="landing" onclick="navigateTo('landing')">
+          <i class="fas fa-home"></i> Home
+        </button>
+        <button class="nav-item" data-view="interest-selector" onclick="navigateTo('interest-selector')">
+          <i class="fas fa-compass"></i> Discover Career
+        </button>
+        <button class="nav-item" data-view="roadmap-input" onclick="navigateTo('roadmap-input')">
+          <i class="fas fa-road"></i> Get Roadmap
+        </button>
+        <button class="nav-item" data-view="skill-check" onclick="navigateTo('skill-check')">
+          <i class="fas fa-check-double"></i> Skill Check
+        </button>
+        <button class="nav-item" data-view="resume-analyzer" onclick="navigateTo('resume-analyzer')">
+          <i class="fas fa-file-alt"></i> Resume Analysis
+        </button>
+        <button class="nav-item" data-view="mock-interview" onclick="navigateTo('mock-interview')">
+          <i class="fas fa-user-tie"></i> Mock Interview
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="logout-btn" id="logoutBtn" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="app">
+
       <!-- VIEW 1: LANDING SELECTION -->
       <section id="view-landing" class="view active">
-        <h2>How can we help you today?</h2>
+        <div class="landing-header">
+          <h2>How can we help you today?</h2>
+          <p>Choose a tool to get started with AI-powered career guidance.</p>
+        </div>
         <div class="cards-container">
           <div class="card" onclick="navigateTo('interest-selector')">
             <i class="fas fa-compass"></i>
             <h3>Discover Career</h3>
-            <p>Based on your interests</p>
+            <p>Get personalized career suggestions based on your interests and strengths.</p>
           </div>
           <div class="card" onclick="navigateTo('roadmap-input')">
             <i class="fas fa-road"></i>
             <h3>Get Roadmap</h3>
-            <p>From current role to dream job</p>
+            <p>Step-by-step plan from your current position to your dream career.</p>
           </div>
           <div class="card" onclick="navigateTo('skill-check')">
             <i class="fas fa-check-double"></i>
             <h3>Skill Check</h3>
-            <p>Required skills for a specific role</p>
+            <p>Discover the skills required for any role — today and in 2-3 years.</p>
           </div>
           <div class="card" onclick="navigateTo('resume-analyzer')">
             <i class="fas fa-file-alt"></i>
             <h3>Resume Analysis</h3>
-            <p>Check fit for your dream job</p>
+            <p>Upload your resume and check fit against your target job role.</p>
           </div>
           <div class="card" onclick="navigateTo('mock-interview')">
             <i class="fas fa-user-tie"></i>
             <h3>Mock Interview</h3>
-            <p>Practice with AI interviewer</p>
+            <p>Practice with an AI interviewer that adapts to your responses.</p>
           </div>
         </div>
       </section>
 
-      <!-- VIEW 2: INTEREST SELECTOR (Legacy improved) -->
+      <!-- VIEW 2: INTEREST SELECTOR -->
       <section id="view-interest-selector" class="view hidden">
         <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
         <h2>Select Your Interests</h2>
+        <p class="view-subtitle">Pick the areas that excite you — we'll match you with careers.</p>
         <div class="interests-grid">
           <button class="interest-btn" data-value="math"><i class="fas fa-calculator"></i> Math</button>
           <button class="interest-btn" data-value="coding"><i class="fas fa-code"></i> Coding</button>
@@ -93,6 +134,7 @@
       <section id="view-roadmap-input" class="view hidden">
         <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
         <h2>Design Your Path</h2>
+        <p class="view-subtitle">Tell us where you are and where you want to go.</p>
         <div class="form-group">
           <label>Select Desired Career</label>
           <select id="roadmap-career-select">
@@ -103,7 +145,6 @@
             <option value="UX Designer">UX Designer</option>
             <option value="Digital Marketer">Digital Marketer</option>
             <option value="Financial Analyst">Financial Analyst</option>
-            <!-- Add more dynamically or statically -->
           </select>
         </div>
         <div class="form-group">
@@ -118,6 +159,7 @@
       <section id="view-skill-check" class="view hidden">
         <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
         <h2>Future-Proof Skill Check</h2>
+        <p class="view-subtitle">See what skills matter — now and in the next 2-3 years.</p>
         <div class="form-group">
           <label>Target Role</label>
           <input type="text" id="skill-role-input" placeholder="e.g. AI Engineer">
@@ -130,6 +172,7 @@
       <section id="view-resume-analyzer" class="view hidden">
         <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
         <h2>Resume Fit Check</h2>
+        <p class="view-subtitle">Upload your resume and see how it matches your target role.</p>
         <div class="form-group">
           <label>Desired Job Role</label>
           <input type="text" id="resume-role-input" placeholder="e.g. Frontend Developer">
@@ -148,6 +191,7 @@
       <section id="view-mock-interview" class="view hidden">
         <button class="back-btn" onclick="navigateTo('landing')"><i class="fas fa-arrow-left"></i> Back</button>
         <h2>AI Mock Interview</h2>
+        <p class="view-subtitle">Practice with an AI interviewer that gives real feedback.</p>
         <div class="setup-interview" id="interview-setup">
           <div class="form-group">
             <label>Interview Role</label>
@@ -158,7 +202,6 @@
 
         <div class="chat-interface hidden" id="interview-chat">
           <div class="chat-history" id="chat-history">
-            <!-- Messages go here -->
             <div class="message ai">
               <div class="avatar"><i class="fas fa-robot"></i></div>
               <div class="bubble">Hello! I'm your AI interviewer. Ready to begin?</div>
@@ -174,9 +217,7 @@
     </main>
   </div>
 
-
-
-  <!-- Existing Auth Scripts -->
+  <!-- Auth & Config Scripts -->
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <!-- Main App Script -->
