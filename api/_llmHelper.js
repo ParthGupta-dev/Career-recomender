@@ -9,7 +9,7 @@ export async function callLLM(prompt) {
 
     switch (provider) {
         case 'gemini': {
-            const model = 'gemini-3.5-flash';
+            const model = 'gemini-2.5-flash';
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
             const response = await fetch(url, {
