@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 echo "What is the name of commit?"
 read update
 git add .
