@@ -1,5 +1,6 @@
 // Vercel Serverless Function: Career Roadmap Generation
-// This function securely handles roadmap generation via Gemini API
+// This function securely handles roadmap generation via Gemini or OpenAI API
+import { callLLM } from './_llmHelper.js';
 
 export default async function handler(req, res) {
     // Enable CORS for frontend requests
@@ -18,55 +19,24 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { currentPosition, targetCareer } = req.body;
+        const { prompt, currentPosition, targetCareer } = req.body;
 
-        if (!currentPosition || !targetCareer) {
+        let finalPrompt = '';
+        if (prompt) {
+            finalPrompt = prompt;
+        } else if (currentPosition && targetCareer) {
+            finalPrompt = `Create a specific, simple 5-step roadmap for someone who is currently a "${currentPosition}" and wants to become a "${targetCareer}".
+For each step:
+1. Give a bold title (e.g., **Step 1: Learn Basics**).
+2. One sentence of advice.
+Format as a Markdown list.`;
+        } else {
             return res.status(400).json({
-                error: 'Both currentPosition and targetCareer are required'
+                error: 'Either prompt or both currentPosition and targetCareer are required'
             });
         }
 
-        // Get API key from environment variables (secure!)
-        const apiKey = process.env.GEMINI_API_KEY;
-
-        if (!apiKey) {
-            return res.status(500).json({ error: 'Server configuration error' });
-        }
-
-        // Build prompt for roadmap
-        const prompt = `Create a specific, simple 5-step roadmap for someone who is currently a "${currentPosition}" and wants to become a "${targetCareer}".
-    For each step:
-    1. Give a bold title (e.g., **Step 1: Learn Basics**).
-    2. One sentence of advice.
-    Format as a Markdown list.`;
-
-        // Call Gemini API
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }]
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Gemini API Error:', errorData);
-            return res.status(response.status).json({
-                error: errorData.error?.message || 'Failed to get AI response'
-            });
-        }
-
-        const data = await response.json();
-        const responseText = data.candidates[0].content.parts[0].text;
+        const responseText = await callLLM(finalPrompt);
 
         // Return the roadmap text
         return res.status(200).json({ response: responseText });
@@ -79,3 +49,4 @@ export default async function handler(req, res) {
         });
     }
 }
+

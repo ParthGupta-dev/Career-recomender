@@ -8,9 +8,6 @@ let state = {
     }
 };
 
-// --- Gemini API Key (client-side for local/demo use) ---
-const GEMINI_API_KEY = 'AIzaSyDIuD8SPOGUbnQV01k6kGb9Ec0s27QDhD8';
-
 // --- DOM Elements ---
 const views = document.querySelectorAll('.view');
 const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
@@ -60,46 +57,31 @@ function navigateTo(viewId) {
     if (sidebarOverlay) sidebarOverlay.classList.remove('active');
 }
 
-// --- AI Helper (calls Gemini directly with API key) ---
+// --- AI Helper (calls secure backend serverless API) ---
 async function callGemini(prompt) {
-    const models = [
-        'gemini-2.0-flash',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash-lite'
-    ];
+    try {
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt })
+        });
 
-    let lastError = null;
-
-    for (const model of models) {
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.error) {
-                console.warn(`Model ${model} failed:`, data.error.message);
-                lastError = data.error.message;
-                continue; // Try next model
-            }
-
-            return data.candidates[0].content.parts[0].text;
-
-        } catch (error) {
-            console.error(`Network error with ${model}:`, error);
-            lastError = error.message;
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to get response from serverless function.');
         }
-    }
 
-    return `AI Error: Could not connect to models. Last error: ${lastError}`;
+        const data = await response.json();
+        return data.response;
+
+    } catch (error) {
+        console.error('API Error:', error);
+        return `AI Error: Could not connect to models. Last error: ${error.message}`;
+    }
 }
+
 
 // --- Markdown Renderer (Marked.js) ---
 function renderMarkdown(text) {
